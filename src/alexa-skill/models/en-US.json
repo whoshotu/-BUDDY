@@ -1,0 +1,192 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "buddy assistant",
+      "intents": [
+        {
+          "name": "GetRoutineIntent",
+          "slots": [
+            {
+              "name": "timeOfDay",
+              "type": "AMAZON.TimeOfDay",
+              "samples": [
+                "{timeOfDay}",
+                "this {timeOfDay}",
+                "my {timeOfDay}"
+              ]
+            }
+          ],
+          "samples": [
+            "what do I do {timeOfDay}",
+            "what's my {timeOfDay} routine",
+            "what happens {timeOfDay}",
+            "tell me my {timeOfDay} routine",
+            "what's next",
+            "what do I do now",
+            "what should I be doing"
+          ]
+        },
+        {
+          "name": "NextStepIntent",
+          "slots": [
+            {
+              "name": "task",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "what do I do next",
+            "what's the next step",
+            "what comes after {task}",
+            "what do I do after {task}",
+            "what happens next",
+            "what's after this"
+          ]
+        },
+        {
+          "name": "WhoIsIntent",
+          "slots": [
+            {
+              "name": "person",
+              "type": "AMAZON.Person",
+              "samples": [
+                "{person}",
+                "tell me about {person}",
+                "who is {person}"
+              ]
+            }
+          ],
+          "samples": [
+            "who is {person}",
+            "tell me about {person}",
+            "what is {person} to me",
+            "do I know {person}",
+            "who's {person}",
+            "remind me who {person} is"
+          ]
+        },
+        {
+          "name": "GetMedicationIntent",
+          "slots": [
+            {
+              "name": "meal",
+              "type": "MealType"
+            },
+            {
+              "name": "medName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "what do I take {meal}",
+            "what medication do I need {meal}",
+            "do I need to take {medName}",
+            "what pills do I take {meal}",
+            "do I need medication",
+            "what medicine is next",
+            "what do I take now",
+            "did I take my pills",
+            "what medication is {meal}"
+          ]
+        },
+        {
+          "name": "GetCurrentTimeIntent",
+          "slots": [],
+          "samples": [
+            "what time is it",
+            "what day is it",
+            "is it morning or afternoon"
+          ]
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": [
+            "help",
+            "what can I say",
+            "what do you do",
+            "how do I use this"
+          ]
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        }
+      ],
+      "types": [
+        {
+          "name": "MealType",
+          "values": [
+            {
+              "name": {
+                "value": "after breakfast",
+                "synonyms": ["after I eat breakfast", "with breakfast", "morning"]
+              }
+            },
+            {
+              "name": {
+                "value": "after lunch",
+                "synonyms": ["after I eat lunch", "with lunch", "afternoon"]
+              }
+            },
+            {
+              "name": {
+                "value": "after dinner",
+                "synonyms": ["after I eat dinner", "with dinner", "evening"]
+              }
+            },
+            {
+              "name": {
+                "value": "at bedtime",
+                "synonyms": ["before bed", "night", "sleep"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "dialog": {
+      "intents": [
+        {
+          "name": "WhoIsIntent",
+          "confirmationRequired": false,
+          "prompts": {},
+          "slots": [
+            {
+              "name": "person",
+              "type": "AMAZON.Person",
+              "confirmationRequired": false,
+              "elicitationRequired": true,
+              "prompts": {
+                "elicitation": "Elicit.Slot.person"
+              }
+            }
+          ]
+        }
+      ],
+      "delegationStrategy": "ALWAYS"
+    },
+    "prompts": [
+      {
+        "id": "Elicit.Slot.person",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "Who would you like to know about?"
+          },
+          {
+            "type": "PlainText",
+            "value": "What's their name?"
+          }
+        ]
+      }
+    ]
+  }
+}

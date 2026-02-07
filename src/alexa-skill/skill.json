@@ -1,0 +1,70 @@
+{
+  "skillManifest": {
+    "publishingInformation": {
+      "locales": {
+        "en-US": {
+          "summary": "Buddy helps people with dementia remember daily routines, family members, and medications through calm, patient voice conversations.",
+          "examplePhrases": [
+            "Alexa, open Buddy Assistant",
+            "What do I do this morning?",
+            "Who is Sarah?",
+            "What do I take after breakfast?"
+          ],
+          "keywords": [
+            "dementia",
+            "alzheimers",
+            "memory",
+            "caregiver",
+            "routine",
+            "medication",
+            "healthcare"
+          ],
+          "name": "Buddy - Dementia Care Assistant",
+          "description": "Buddy is a voice-first AI assistant designed specifically for people living with dementia and Alzheimer's disease. It provides 24/7 memory support, routine guidance, and intelligent safety escalation through natural voice conversations. Built with Amazon Nova for the AI Hackathon 2026.",
+          "smallIconUri": "https://s3.amazonaws.com/your-bucket/buddy-icon-small.png",
+          "largeIconUri": "https://s3.amazonaws.com/your-bucket/buddy-icon-large.png"
+        }
+      },
+      "isAvailableWorldwide": false,
+      "testingInstructions": "Test with the provided demo patient 'John Doe'. Sample utterances: 'What do I do this morning?', 'Who is Sarah?', 'What do I take after breakfast?'. Test emergency escalation by saying 'I fell' or 'I need help'.",
+      "category": "HEALTH_AND_FITNESS",
+      "distributionMode": "PUBLIC",
+      "distributionCountries": ["US"]
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "arn:aws:lambda:us-east-1:YOUR_ACCOUNT_ID:function:buddy-alexa-skill-dev",
+          "sslCertificateType": "Wildcard"
+        },
+        "interfaces": [],
+        "regions": {
+          "NA": {
+            "endpoint": {
+              "uri": "arn:aws:lambda:us-east-1:YOUR_ACCOUNT_ID:function:buddy-alexa-skill-dev"
+            }
+          }
+        }
+      }
+    },
+    "manifestVersion": "1.0",
+    "permissions": [
+      {
+        "name": "alexa::devices:all:address:full:read"
+      }
+    ],
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "usesPersonalInfo": true,
+      "isChildDirected": false,
+      "isExportCompliant": true,
+      "containsAds": false,
+      "locales": {
+        "en-US": {
+          "privacyPolicyUrl": "https://your-domain.com/privacy",
+          "termsOfUseUrl": "https://your-domain.com/terms"
+        }
+      }
+    }
+  }
+}

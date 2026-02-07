@@ -1,0 +1,35 @@
+{
+  "name": "buddy-alexa-skill",
+  "version": "1.0.0",
+  "description": "Buddy - Voice-first dementia care assistant for Amazon Nova Hackathon",
+  "main": "index.js",
+  "scripts": {
+    "build": "npm run clean && npm install --production && zip -r lambda.zip .",
+    "clean": "rm -rf node_modules lambda.zip",
+    "test": "node test-local.js"
+  },
+  "dependencies": {
+    "ask-sdk-core": "^2.14.0",
+    "ask-sdk-model": "^1.19.0",
+    "@aws-sdk/client-dynamodb": "^3.450.0",
+    "@aws-sdk/lib-dynamodb": "^3.450.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.450.0",
+    "@aws-sdk/client-sns": "^3.450.0",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "aws-sdk": "^2.1499.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Anthony Lopez",
+  "license": "MIT",
+  "keywords": [
+    "alexa",
+    "dementia",
+    "healthcare",
+    "amazon-nova",
+    "voice-assistant"
+  ]
+}
