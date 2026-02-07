@@ -43,7 +43,7 @@ echo ""
 
 # Check DynamoDB tables
 echo "📊 Checking DynamoDB tables..."
-for TABLE in "BuddyCaregivers-${ENVIRONMENT}" "BuddyPatients-${ENVIRONMENT}" "BuddyConversationLogs-${ENVIRONMENT}"; do
+for TABLE in "BuddyCaregivers-${ENVIRONMENT}" "BuddyPatients-${ENVIRONMENT}" "BuddyAssignments-${ENVIRONMENT}" "BuddyConversationLogs-${ENVIRONMENT}"; do
     if aws dynamodb describe-table --table-name "${TABLE}" --region "${REGION}" > /dev/null 2>&1; then
         echo "${GREEN}✅${NC} ${TABLE}"
     else

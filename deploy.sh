@@ -110,9 +110,10 @@ LOGS_TABLE=$(aws cloudformation describe-stacks \
 echo "${GREEN}✅ Resources ready${NC}"
 echo ""
 echo "📊 DynamoDB Tables:"
-echo "   ${YELLOW}Caregivers:${NC}  ${CAREGIVERS_TABLE}"
-echo "   ${YELLOW}Patients:${NC}    ${PATIENTS_TABLE}"
-echo "   ${YELLOW}Logs:${NC}        ${LOGS_TABLE}"
+echo "   ${YELLOW}Caregivers:${NC}   ${CAREGIVERS_TABLE}"
+echo "   ${YELLOW}Patients:${NC}     ${PATIENTS_TABLE}"
+echo "   ${YELLOW}Assignments:${NC}  ${ASSIGNMENTS_TABLE}"
+echo "   ${YELLOW}Logs:${NC}         ${LOGS_TABLE}"
 echo ""
 
 # Create environment file for other scripts
@@ -122,6 +123,7 @@ REGION=${REGION}
 CAREGIVERS_TABLE=${CAREGIVERS_TABLE}
 PATIENTS_TABLE=${PATIENTS_TABLE}
 LOGS_TABLE=${LOGS_TABLE}
+ASSIGNMENTS_TABLE=${ASSIGNMENTS_TABLE}
 AWS_ACCOUNT_ID=${ACCOUNT_ID}
 EOF
 

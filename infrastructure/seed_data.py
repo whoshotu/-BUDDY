@@ -16,6 +16,21 @@ ENVIRONMENT = "dev"
 # Table names
 CAREGIVERS_TABLE = f"BuddyCaregivers-{ENVIRONMENT}"
 PATIENTS_TABLE = f"BuddyPatients-{ENVIRONMENT}"
+ASSIGNMENTS_TABLE = f"BuddyAssignments-{ENVIRONMENT}"
+
+# Seed data - Assignment (links caregiver to patient)
+ASSIGNMENT = {
+    "caregiverId": "cg-001",
+    "patientId": "pt-001",
+    "assignedAt": datetime.now(timezone.utc).isoformat(),
+    "isPrimary": True,
+    # Minimal patient snapshot for list views (avoids full patient record fetch)
+    "patientSnapshot": {
+        "preferredName": "John",
+        "dementiaStage": "moderate",
+        "lastActivityAt": None
+    }
+}
 
 # Seed data - Caregiver
 # Password: Demo2026! (bcrypt hash)
@@ -24,17 +39,33 @@ CAREGIVER = {
     "caregiverId": "cg-001",
     "displayName": "Caregiver Test",
     "passwordHash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiAYMyzJ/IiS",  # Demo2026!
-    "createdAt": datetime.now(timezone.utc).isoformat()
+    "phoneNumber": "+15550123",
+    "notificationPreferences": {
+        "smsEnabled": True,
+        "quietHoursStart": "22:00",
+        "quietHoursEnd": "07:00",
+        "level1Alerts": True,
+        "level2Alerts": True
+    },
+    "createdAt": datetime.now(timezone.utc).isoformat(),
+    "updatedAt": datetime.now(timezone.utc).isoformat()
 }
 
 # Seed data - Patient (John Doe)
+# Note: caregiverId removed from here - now in BuddyAssignments table
 PATIENT = {
     "patientId": "pt-001",
-    "caregiverId": "cg-001",
     "name": "John Doe",
     "preferredName": "John",
     "birthdate": "1950-03-15",
     "dementiaStage": "moderate",
+    # Activity metadata for dashboard performance
+    "lastConversationAt": None,
+    "lastEscalationLevel": 0,
+    "conversationCountToday": 0,
+    "lastModifiedAt": datetime.now(timezone.utc).isoformat(),
+    "lastModifiedBy": "system",
+    "_version": 1,
     "people": [
         {
             "personId": "p-001",
@@ -130,6 +161,7 @@ def seed_data():
     
     caregivers_table = dynamodb.Table(CAREGIVERS_TABLE)
     patients_table = dynamodb.Table(PATIENTS_TABLE)
+    assignments_table = dynamodb.Table(ASSIGNMENTS_TABLE)
     
     print(f"Seeding {CAREGIVERS_TABLE}...")
     caregivers_table.put_item(Item=CAREGIVER)
@@ -138,6 +170,10 @@ def seed_data():
     print(f"Seeding {PATIENTS_TABLE}...")
     patients_table.put_item(Item=PATIENT)
     print(f"  ✓ Inserted patient: {PATIENT['preferredName']} ({PATIENT['patientId']})")
+    
+    print(f"Seeding {ASSIGNMENTS_TABLE}...")
+    assignments_table.put_item(Item=ASSIGNMENT)
+    print(f"  ✓ Inserted assignment: {ASSIGNMENT['caregiverId']} → {ASSIGNMENT['patientId']}")
     
     print("\n✅ Seed data inserted successfully!")
     print(f"\nTest Credentials:")
@@ -152,6 +188,7 @@ def verify_data():
     
     caregivers_table = dynamodb.Table(CAREGIVERS_TABLE)
     patients_table = dynamodb.Table(PATIENTS_TABLE)
+    assignments_table = dynamodb.Table(ASSIGNMENTS_TABLE)
     
     print("\nVerifying data...")
     
@@ -159,6 +196,8 @@ def verify_data():
     response = caregivers_table.get_item(Key={"username": "caregiver_test"})
     if 'Item' in response:
         print(f"  ✓ Caregiver found: {response['Item']['displayName']}")
+        print(f"    - Phone: {response['Item'].get('phoneNumber', 'N/A')}")
+        print(f"    - SMS enabled: {response['Item'].get('notificationPreferences', {}).get('smsEnabled', False)}")
     else:
         print("  ✗ Caregiver not found!")
     
@@ -170,8 +209,22 @@ def verify_data():
         print(f"    - People: {len(patient['people'])}")
         print(f"    - Routines: {len(patient['routines'])}")
         print(f"    - Medications: {len(patient['medications'])}")
+        print(f"    - Version: {patient.get('_version', 'N/A')}")
     else:
         print("  ✗ Patient not found!")
+    
+    # Check assignment
+    response = assignments_table.get_item(Key={
+        "caregiverId": "cg-001",
+        "patientId": "pt-001"
+    })
+    if 'Item' in response:
+        assignment = response['Item']
+        print(f"  ✓ Assignment found: {assignment['caregiverId']} → {assignment['patientId']}")
+        print(f"    - Is primary: {assignment.get('isPrimary', False)}")
+        print(f"    - Assigned at: {assignment.get('assignedAt', 'N/A')}")
+    else:
+        print("  ✗ Assignment not found!")
 
 
 if __name__ == "__main__":

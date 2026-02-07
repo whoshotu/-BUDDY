@@ -59,6 +59,14 @@ LOGS_TABLE_ARN=$(aws cloudformation describe-stacks \
     --output text \
     --region "${REGION}" 2>/dev/null || echo "")
 
+# Get BuddyAssignments table ARN from separate stack
+ASSIGNMENTS_STACK_NAME="${STACK_NAME}-assignments-${ENVIRONMENT}"
+ASSIGNMENTS_TABLE_ARN=$(aws cloudformation describe-stacks \
+    --stack-name "${ASSIGNMENTS_STACK_NAME}" \
+    --query 'Stacks[0].Outputs[?OutputKey==`AssignmentsTableArn`].OutputValue' \
+    --output text \
+    --region "${REGION}" 2>/dev/null || echo "")
+
 if [ -z "$CAREGIVERS_TABLE_ARN" ]; then
     echo "${RED}❌ DynamoDB tables not found. Run ./deploy.sh first.${NC}"
     exit 1
@@ -67,6 +75,7 @@ fi
 echo "📊 Found tables:"
 echo "   Caregivers: ${CAREGIVERS_TABLE_ARN}"
 echo "   Patients: ${PATIENTS_TABLE_ARN}"
+echo "   Assignments: ${ASSIGNMENTS_TABLE_ARN}"
 echo "   Logs: ${LOGS_TABLE_ARN}"
 echo ""
 
@@ -132,9 +141,11 @@ cat > /tmp/buddy-policy.json << EOF
       "Resource": [
         "${CAREGIVERS_TABLE_ARN}",
         "${PATIENTS_TABLE_ARN}",
+        "${ASSIGNMENTS_TABLE_ARN}",
         "${LOGS_TABLE_ARN}",
         "${CAREGIVERS_TABLE_ARN}/index/*",
         "${PATIENTS_TABLE_ARN}/index/*",
+        "${ASSIGNMENTS_TABLE_ARN}/index/*",
         "${LOGS_TABLE_ARN}/index/*"
       ]
     },

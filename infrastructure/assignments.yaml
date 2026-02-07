@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Buddy MVP - BuddyAssignments table for caregiver-patient relationships"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    Description: Deployment environment
+
+Resources:
+  # NEW: BuddyAssignments table - links caregivers to patients
+  # Solves the scalability issue of storing all patients in caregiver record
+  BuddyAssignmentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "BuddyAssignments-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: caregiverId
+          AttributeType: S
+        - AttributeName: patientId
+          AttributeType: S
+        - AttributeName: assignedAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: caregiverId
+          KeyType: HASH
+        - AttributeName: patientId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        # Reverse lookup: find caregivers for a patient
+        - IndexName: patientIdIndex
+          KeySchema:
+            - AttributeName: patientId
+              KeyType: HASH
+            - AttributeName: assignedAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        # List assignments by date (for recent activity)
+        - IndexName: assignedAtIndex
+          KeySchema:
+            - AttributeName: caregiverId
+              KeyType: HASH
+            - AttributeName: assignedAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Project
+          Value: Buddy
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  AssignmentsTableName:
+    Description: Name of the assignments table
+    Value: !Ref BuddyAssignmentsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-AssignmentsTable"
+  
+  AssignmentsTableArn:
+    Description: ARN of the assignments table
+    Value: !GetAtt BuddyAssignmentsTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-AssignmentsTableArn"
