@@ -1,0 +1,644 @@
+openapi: 3.0.3
+info:
+  title: Buddy Caregiver Dashboard API
+  version: 0.1.0
+  description: >
+    API for caregiver dashboard: simple username/password login, manage patient knowledge base
+    (people, routines, medications), and view conversation logs / safety escalations.
+
+servers:
+  - url: https://{apiHost}
+    variables:
+      apiHost:
+        default: api.example.com
+
+tags:
+  - name: Auth
+  - name: Patients
+  - name: People
+  - name: Routines
+  - name: Medications
+  - name: Logs
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with username/password, returns bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (server may revoke token if using a session store)
+      responses:
+        "204":
+          description: Logged out
+
+  /me:
+    get:
+      tags: [Auth]
+      summary: Get current caregiver profile
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Caregiver' }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /patients:
+    get:
+      tags: [Patients]
+      summary: List patients visible to the caregiver
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - in: query
+          name: nextToken
+          schema: { type: string, nullable: true }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PatientListResponse' }
+
+  /patients/{patientId}:
+    get:
+      tags: [Patients]
+      summary: Get patient profile (knowledge base root object)
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PatientProfile' }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+    put:
+      tags: [Patients]
+      summary: Update core patient profile fields (not nested collections)
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PatientProfileUpdate' }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PatientProfile' }
+
+  /patients/{patientId}/people:
+    get:
+      tags: [People]
+      summary: List known people for "Who is X?"
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Person' }
+                required: [items]
+
+    post:
+      tags: [People]
+      summary: Add a person
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PersonCreate' }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Person' }
+
+  /patients/{patientId}/people/{personId}:
+    put:
+      tags: [People]
+      summary: Update a person
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: personId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PersonUpdate' }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Person' }
+
+    delete:
+      tags: [People]
+      summary: Delete a person
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: personId
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /patients/{patientId}/routines:
+    get:
+      tags: [Routines]
+      summary: List routines (e.g., morning/afternoon/evening)
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/RoutineBlock' }
+                required: [items]
+
+    post:
+      tags: [Routines]
+      summary: Create a routine block
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoutineBlockCreate' }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutineBlock' }
+
+  /patients/{patientId}/routines/{routineId}:
+    put:
+      tags: [Routines]
+      summary: Update a routine block
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: routineId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoutineBlockUpdate' }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutineBlock' }
+
+    delete:
+      tags: [Routines]
+      summary: Delete a routine block
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: routineId
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /patients/{patientId}/medications:
+    get:
+      tags: [Medications]
+      summary: List medications (for “what do I take now/after breakfast?”)
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Medication' }
+                required: [items]
+
+    post:
+      tags: [Medications]
+      summary: Add a medication record (name/timing/appearance only)
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MedicationCreate' }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Medication' }
+
+  /patients/{patientId}/medications/{medicationId}:
+    put:
+      tags: [Medications]
+      summary: Update a medication record
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: medicationId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MedicationUpdate' }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Medication' }
+
+    delete:
+      tags: [Medications]
+      summary: Delete a medication record
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: medicationId
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /patients/{patientId}/logs:
+    get:
+      tags: [Logs]
+      summary: List conversation log entries (includes repeatCount + escalationLevel)
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - in: query
+          name: nextToken
+          schema: { type: string, nullable: true }
+        - in: query
+          name: fromTime
+          description: ISO-8601 inclusive
+          schema: { type: string, format: date-time, nullable: true }
+        - in: query
+          name: toTime
+          description: ISO-8601 exclusive
+          schema: { type: string, format: date-time, nullable: true }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationLogListResponse' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+        code: { type: string, nullable: true }
+      required: [message]
+
+    LoginRequest:
+      type: object
+      properties:
+        username: { type: string, minLength: 1 }
+        password: { type: string, minLength: 1 }
+      required: [username, password]
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string, enum: [Bearer] }
+        expiresInSeconds: { type: integer, example: 3600 }
+        caregiver:
+          $ref: '#/components/schemas/Caregiver'
+      required: [accessToken, tokenType, expiresInSeconds, caregiver]
+
+    Caregiver:
+      type: object
+      properties:
+        caregiverId: { type: string }
+        username: { type: string }
+        displayName: { type: string, nullable: true }
+      required: [caregiverId, username]
+
+    PatientListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              patientId: { type: string }
+              preferredName: { type: string }
+              dementiaStage: { type: string, enum: [early, moderate, advanced], nullable: true }
+            required: [patientId, preferredName]
+        nextToken: { type: string, nullable: true }
+      required: [items]
+
+    PatientProfile:
+      type: object
+      properties:
+        patientId: { type: string }
+        name: { type: string }
+        preferredName: { type: string }
+        birthdate: { type: string, format: date, nullable: true }
+        dementiaStage: { type: string, enum: [early, moderate, advanced], nullable: true }
+        safetyProfile:
+          $ref: '#/components/schemas/SafetyProfile'
+        people:
+          type: array
+          items: { $ref: '#/components/schemas/Person' }
+        routines:
+          type: array
+          items: { $ref: '#/components/schemas/RoutineBlock' }
+        medications:
+          type: array
+          items: { $ref: '#/components/schemas/Medication' }
+      required: [patientId, preferredName]
+
+    PatientProfileUpdate:
+      type: object
+      properties:
+        name: { type: string, nullable: true }
+        preferredName: { type: string, nullable: true }
+        birthdate: { type: string, format: date, nullable: true }
+        dementiaStage: { type: string, enum: [early, moderate, advanced], nullable: true }
+        safetyProfile:
+          $ref: '#/components/schemas/SafetyProfile'
+      additionalProperties: false
+
+    SafetyProfile:
+      type: object
+      properties:
+        caregiverPhone: { type: string, nullable: true, description: "E.164 recommended" }
+        emergencyContacts:
+          type: array
+          items: { type: string }
+        allergies:
+          type: array
+          items: { type: string }
+        knownTriggers:
+          type: array
+          items: { type: string }
+      additionalProperties: false
+
+    Person:
+      type: object
+      properties:
+        personId: { type: string }
+        name: { type: string }
+        relationship: { type: string, nullable: true }
+        visitSchedule: { type: string, nullable: true }
+        sharedActivities:
+          type: array
+          items: { type: string }
+        photoUrl: { type: string, nullable: true }
+      required: [personId, name]
+
+    PersonCreate:
+      type: object
+      properties:
+        name: { type: string }
+        relationship: { type: string, nullable: true }
+        visitSchedule: { type: string, nullable: true }
+        sharedActivities:
+          type: array
+          items: { type: string }
+        photoUrl: { type: string, nullable: true }
+      required: [name]
+
+    PersonUpdate:
+      type: object
+      properties:
+        name: { type: string, nullable: true }
+        relationship: { type: string, nullable: true }
+        visitSchedule: { type: string, nullable: true }
+        sharedActivities:
+          type: array
+          items: { type: string }
+        photoUrl: { type: string, nullable: true }
+      additionalProperties: false
+
+    RoutineBlock:
+      type: object
+      properties:
+        routineId: { type: string }
+        timeOfDay: { type: string, enum: [morning, afternoon, evening, night] }
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/RoutineStep' }
+      required: [routineId, timeOfDay, steps]
+
+    RoutineStep:
+      type: object
+      properties:
+        stepId: { type: string }
+        text: { type: string }
+        context: { type: string, nullable: true }
+      required: [stepId, text]
+
+    RoutineBlockCreate:
+      type: object
+      properties:
+        timeOfDay: { type: string, enum: [morning, afternoon, evening, night] }
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              text: { type: string }
+              context: { type: string, nullable: true }
+            required: [text]
+      required: [timeOfDay, steps]
+
+    RoutineBlockUpdate:
+      type: object
+      properties:
+        timeOfDay: { type: string, enum: [morning, afternoon, evening, night], nullable: true }
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              stepId: { type: string, nullable: true }
+              text: { type: string, nullable: true }
+              context: { type: string, nullable: true }
+            additionalProperties: false
+      additionalProperties: false
+
+    Medication:
+      type: object
+      properties:
+        medicationId: { type: string }
+        name: { type: string }
+        timing: { type: string, nullable: true, description: "e.g., 'after breakfast'" }
+        appearance: { type: string, nullable: true, description: "e.g., 'small white round pill'" }
+        notes: { type: string, nullable: true }
+      required: [medicationId, name]
+
+    MedicationCreate:
+      type: object
+      properties:
+        name: { type: string }
+        timing: { type: string, nullable: true }
+        appearance: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+      required: [name]
+
+    MedicationUpdate:
+      type: object
+      properties:
+        name: { type: string, nullable: true }
+        timing: { type: string, nullable: true }
+        appearance: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+      additionalProperties: false
+
+    ConversationLogEntry:
+      type: object
+      properties:
+        timestamp: { type: string, format: date-time }
+        intent: { type: string, nullable: true }
+        userUtterance: { type: string }
+        assistantResponse: { type: string, nullable: true }
+        escalationLevel: { type: integer, enum: [0, 1, 2] }
+        repeatCount: { type: integer, minimum: 0 }
+      required: [timestamp, userUtterance, escalationLevel, repeatCount]
+
+    ConversationLogListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ConversationLogEntry' }
+        nextToken: { type: string, nullable: true }
+      required: [items]
+

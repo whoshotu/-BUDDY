@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Buddy MVP - DynamoDB tables for caregiver dashboard and conversation logs"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    Description: Deployment environment
+
+Resources:
+  # Caregivers table - stores login credentials and profile info
+  BuddyCaregiversTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "BuddyCaregivers-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: username
+          AttributeType: S
+        - AttributeName: caregiverId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: username
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: caregiverIdIndex
+          KeySchema:
+            - AttributeName: caregiverId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Project
+          Value: Buddy
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Patients table - stores patient profiles, routines, medications, people
+  BuddyPatientsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "BuddyPatients-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: patientId
+          AttributeType: S
+        - AttributeName: caregiverId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: patientId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: caregiverIdIndex
+          KeySchema:
+            - AttributeName: caregiverId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Project
+          Value: Buddy
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Conversation logs table - stores all patient-Alexa interactions
+  # TTL enabled for 90-day auto-deletion (privacy requirement)
+  BuddyConversationLogsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "BuddyConversationLogs-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: patientId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+        - AttributeName: escalationLevel
+          AttributeType: N
+      KeySchema:
+        - AttributeName: patientId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: escalationLevelIndex
+          KeySchema:
+            - AttributeName: escalationLevel
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Project
+          Value: Buddy
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  CaregiversTableName:
+    Description: Name of the caregivers table
+    Value: !Ref BuddyCaregiversTable
+    Export:
+      Name: !Sub "${AWS::StackName}-CaregiversTable"
+  
+  CaregiversTableArn:
+    Description: ARN of the caregivers table
+    Value: !GetAtt BuddyCaregiversTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CaregiversTableArn"
+  
+  PatientsTableName:
+    Description: Name of the patients table
+    Value: !Ref BuddyPatientsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-PatientsTable"
+  
+  PatientsTableArn:
+    Description: ARN of the patients table
+    Value: !GetAtt BuddyPatientsTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-PatientsTableArn"
+  
+  ConversationLogsTableName:
+    Description: Name of the conversation logs table
+    Value: !Ref BuddyConversationLogsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-ConversationLogsTable"
+  
+  ConversationLogsTableArn:
+    Description: ARN of the conversation logs table
+    Value: !GetAtt BuddyConversationLogsTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ConversationLogsTableArn"
