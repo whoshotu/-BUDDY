@@ -47,6 +47,9 @@ CAREGIVER = {
         "level1Alerts": True,
         "level2Alerts": True
     },
+    "alexaUserMappings": {
+        "amzn1.ask.account.test": "pt-001"
+    },
     "createdAt": datetime.now(timezone.utc).isoformat(),
     "updatedAt": datetime.now(timezone.utc).isoformat()
 }

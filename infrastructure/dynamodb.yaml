@@ -108,6 +108,49 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
+  # Assignments table - links caregivers to patients (many-to-many)
+  BuddyAssignmentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "BuddyAssignments-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: caregiverId
+          AttributeType: S
+        - AttributeName: patientId
+          AttributeType: S
+        - AttributeName: assignedAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: caregiverId
+          KeyType: HASH
+        - AttributeName: patientId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: patientIdIndex
+          KeySchema:
+            - AttributeName: patientId
+              KeyType: HASH
+            - AttributeName: assignedAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: assignedAtIndex
+          KeySchema:
+            - AttributeName: caregiverId
+              KeyType: HASH
+            - AttributeName: assignedAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Project
+          Value: Buddy
+        - Key: Environment
+          Value: !Ref Environment
+
 Outputs:
   CaregiversTableName:
     Description: Name of the caregivers table
@@ -144,3 +187,15 @@ Outputs:
     Value: !GetAtt BuddyConversationLogsTable.Arn
     Export:
       Name: !Sub "${AWS::StackName}-ConversationLogsTableArn"
+  
+  AssignmentsTableName:
+    Description: Name of the assignments table
+    Value: !Ref BuddyAssignmentsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-AssignmentsTable"
+  
+  AssignmentsTableArn:
+    Description: ARN of the assignments table
+    Value: !GetAtt BuddyAssignmentsTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-AssignmentsTableArn"
