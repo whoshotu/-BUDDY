@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { 
-  Activity, 
-  AlertCircle, 
-  Phone, 
-  MessageSquare, 
-  User, 
+import {
+  Activity,
+  AlertCircle,
+  Phone,
+  MessageSquare,
+  User,
   Clock,
   CheckCircle,
   AlertTriangle,
@@ -132,7 +132,7 @@ export default function Dashboard() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as 'overview' | 'conversations' | 'alerts')}
                 className={`
                   py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2
                   ${activeTab === tab.id
@@ -260,11 +260,10 @@ function ConversationItem({ conversation, detailed = false }: { conversation: Co
           </span>
         </div>
         {conversation.escalationLevel > 0 && (
-          <span className={`text-xs font-medium px-2 py-1 rounded ${
-            conversation.escalationLevel === 2 
-              ? 'bg-red-100 text-red-700' 
+          <span className={`text-xs font-medium px-2 py-1 rounded ${conversation.escalationLevel === 2
+              ? 'bg-red-100 text-red-700'
               : 'bg-yellow-100 text-yellow-700'
-          }`}>
+            }`}>
             Level {conversation.escalationLevel}
           </span>
         )}
@@ -298,9 +297,8 @@ function AlertItem({ alert }: { alert: Alert }) {
     <div className={`p-4 hover:bg-gray-50 ${!alert.acknowledged ? 'bg-yellow-50/50' : ''}`}>
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-3">
-          <div className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-            alert.level === 2 ? 'bg-red-100' : 'bg-yellow-100'
-          }`}>
+          <div className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${alert.level === 2 ? 'bg-red-100' : 'bg-yellow-100'
+            }`}>
             {alert.level === 2 ? (
               <AlertTriangle className="h-5 w-5 text-red-600" />
             ) : (
@@ -309,11 +307,10 @@ function AlertItem({ alert }: { alert: Alert }) {
           </div>
           <div>
             <div className="flex items-center space-x-2 mb-1">
-              <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                alert.level === 2 
-                  ? 'bg-red-100 text-red-700' 
+              <span className={`text-xs font-medium px-2 py-0.5 rounded ${alert.level === 2
+                  ? 'bg-red-100 text-red-700'
                   : 'bg-yellow-100 text-yellow-700'
-              }`}>
+                }`}>
                 Level {alert.level}
               </span>
               <span className="text-xs text-gray-500">

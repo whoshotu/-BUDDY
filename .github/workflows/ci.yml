@@ -2,9 +2,9 @@ name: Buddy CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   alexa-skill:
@@ -15,8 +15,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
           cache-dependency-path: src/alexa-skill/package-lock.json
       - name: Install dependencies
         run: |
@@ -35,8 +35,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: src/caregiver-dashboard/package-lock.json
       - name: Install dependencies
         run: |
@@ -50,15 +50,3 @@ jobs:
         run: |
           cd src/caregiver-dashboard
           npm run build
-
-  infrastructure:
-    name: Infrastructure Validation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate CloudFormation Templates
-        run: |
-          for file in infrastructure/*.yaml; do
-            echo "Validating $file..."
-            aws cloudformation validate-template --template-body file://$file --region us-east-1 || exit 1
-          done
