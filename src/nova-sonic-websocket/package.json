@@ -1,0 +1,31 @@
+{
+  "name": "buddy-nova-sonic-websocket",
+  "version": "1.0.0",
+  "description": "Buddy - Nova Sonic WebSocket handler for real-time speech-to-speech",
+  "main": "index.js",
+  "scripts": {
+    "build": "npm run clean && npm install --production && zip -r websocket-lambda.zip .",
+    "clean": "rm -rf node_modules websocket-lambda.zip",
+    "test": "node test-local.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.787.0",
+    "@aws-sdk/client-dynamodb": "^3.787.0",
+    "@aws-sdk/lib-dynamodb": "^3.787.0",
+    "@aws-sdk/client-sns": "^3.787.0",
+    "@smithy/node-http-handler": "^4.0.4",
+    "@smithy/types": "^4.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Anthony Lopez",
+  "license": "MIT",
+  "keywords": [
+    "nova-sonic",
+    "websocket",
+    "speech-to-speech",
+    "dementia-care",
+    "amazon-nova"
+  ]
+}

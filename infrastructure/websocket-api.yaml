@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Buddy - WebSocket API for Nova Sonic speech-to-speech integration"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    Description: Deployment environment
+  
+  LambdaRoleArn:
+    Type: String
+    Description: IAM Role ARN for Lambda execution
+
+Resources:
+  # WebSocket API
+  BuddyWebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "buddy-nova-sonic-websocket-${Environment}"
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+
+  # WebSocket Routes
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref BuddyWebSocketApi
+      RouteKey: "$connect"
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${ConnectIntegration}"
+
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref BuddyWebSocketApi
+      RouteKey: "$disconnect"
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${DisconnectIntegration}"
+
+  DefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref BuddyWebSocketApi
+      RouteKey: "$default"
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${DefaultIntegration}"
+
+  # Lambda Integrations
+  ConnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref BuddyWebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketLambdaFunction.Arn}/invocations"
+      CredentialsArn: !Ref LambdaRoleArn
+
+  DisconnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref BuddyWebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketLambdaFunction.Arn}/invocations"
+      CredentialsArn: !Ref LambdaRoleArn
+
+  DefaultIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref BuddyWebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketLambdaFunction.Arn}/invocations"
+      CredentialsArn: !Ref LambdaRoleArn
+
+  # WebSocket Stage
+  WebSocketStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref BuddyWebSocketApi
+      StageName: !Ref Environment
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 100
+        ThrottlingRateLimit: 50
+
+  # Lambda Function
+  WebSocketLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "buddy-nova-sonic-websocket-${Environment}"
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Role: !Ref LambdaRoleArn
+      Timeout: 900  # 15 minutes (WebSocket connections can be long-lived)
+      MemorySize: 1024  # Higher memory for audio processing
+      Environment:
+        Variables:
+          PATIENTS_TABLE: !Sub "BuddyPatients-${Environment}"
+          LOGS_TABLE: !Sub "BuddyConversationLogs-${Environment}"
+          SNS_TOPIC_ARN: !Ref SNSTopic
+          WEBSOCKET_API_ENDPOINT: !Sub "${BuddyWebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            console.log('WebSocket event:', JSON.stringify(event, null, 2));
+            return { statusCode: 200 };
+          };
+
+  # Lambda Permission for API Gateway
+  WebSocketLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref WebSocketLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "${BuddyWebSocketApi}/*"
+
+  # SNS Topic for alerts (if not already created)
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "buddy-nova-sonic-alerts-${Environment}"
+
+Outputs:
+  WebSocketApiEndpoint:
+    Description: WebSocket API Endpoint URL
+    Value: !Sub "wss://${BuddyWebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${AWS::StackName}-WebSocketEndpoint"
+
+  WebSocketApiId:
+    Description: WebSocket API ID
+    Value: !Ref BuddyWebSocketApi
+    Export:
+      Name: !Sub "${AWS::StackName}-WebSocketApiId"
