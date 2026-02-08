@@ -94,7 +94,7 @@ else
         --handler index.handler \
         --zip-file fileb://lambda.zip \
         --region "${REGION}" \
-        --timeout 8 \  # 8 seconds: Alexa service timeout limit (per Well-Architected guidance)
+        --timeout 8 \
         --memory-size 512 \
         --tracing-config Mode=Active \
         --environment Variables="{
@@ -125,26 +125,16 @@ echo ""
 # Add Alexa Skills Kit trigger
 echo "🔗 Configuring Alexa Skills Kit trigger..."
 
-# Check if trigger exists
-TRIGGER_EXISTS=$(aws lambda list-triggers \
+# Add permission for Alexa Skills Kit to invoke Lambda
+aws lambda add-permission \
     --function-name "${FUNCTION_FULL_NAME}" \
+    --statement-id "alexa-skills-kit-trigger" \
+    --action "lambda:InvokeFunction" \
+    --principal "alexa-appkit.amazon.com" \
     --region "${REGION}" \
-    --query "Triggers[?EventSource=='alexa-skills-kit']" \
-    --output text)
+    --source-arn "arn:aws:alexa:skill:*:*" 2>/dev/null || true
 
-if [ -z "$TRIGGER_EXISTS" ]; then
-    aws lambda add-permission \
-        --function-name "${FUNCTION_FULL_NAME}" \
-        --statement-id "alexa-skills-kit-trigger" \
-        --action "lambda:InvokeFunction" \
-        --principal "alexa-appkit.amazon.com" \
-        --region "${REGION}" \
-        --source-arn "arn:aws:alexa:skill:*:*" 2>/dev/null || true
-    
-    echo "${GREEN}✅ Alexa Skills Kit trigger added${NC}"
-else
-    echo "   Trigger already exists"
-fi
+echo "${GREEN}✅ Alexa Skills Kit trigger configured${NC}"
 
 # Cleanup
 rm lambda.zip

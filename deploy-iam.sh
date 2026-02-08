@@ -59,10 +59,9 @@ LOGS_TABLE_ARN=$(aws cloudformation describe-stacks \
     --output text \
     --region "${REGION}" 2>/dev/null || echo "")
 
-# Get BuddyAssignments table ARN from separate stack
-ASSIGNMENTS_STACK_NAME="${STACK_NAME}-assignments-${ENVIRONMENT}"
+# Get BuddyAssignments table ARN
 ASSIGNMENTS_TABLE_ARN=$(aws cloudformation describe-stacks \
-    --stack-name "${ASSIGNMENTS_STACK_NAME}" \
+    --stack-name "${STACK_NAME}-${ENVIRONMENT}" \
     --query 'Stacks[0].Outputs[?OutputKey==`AssignmentsTableArn`].OutputValue' \
     --output text \
     --region "${REGION}" 2>/dev/null || echo "")
@@ -161,7 +160,10 @@ cat > /tmp/buddy-policy.json << EOF
       "Action": [
         "sns:Publish"
       ],
-      "Resource": "arn:aws:sns:${REGION}:${ACCOUNT_ID}:buddy-alerts-${ENVIRONMENT}"
+      "Resource": [
+        "arn:aws:sns:${REGION}:${ACCOUNT_ID}:buddy-alerts-${ENVIRONMENT}",
+        "*"
+      ]
     },
     {
       "Effect": "Allow",
