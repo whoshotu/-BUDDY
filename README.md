@@ -125,7 +125,29 @@ This creates:
 "I fell down" (immediate Level 2 alert)
 ```
 
-### Phase 3: Caregiver API (Coming Soon)
+### Phase 3: Nova Sonic & Emergency Assist (Optional)
+
+```bash
+# Deploy Nova Sonic WebSocket API for advanced speech-to-speech
+./deploy-websocket.sh --environment dev --region us-east-1
+
+# Deploy CloudWatch monitoring dashboard
+./deploy-monitoring.sh --environment dev --region us-east-1
+```
+
+**Nova Sonic Features:**
+- Bidirectional streaming with barge-in support
+- Natural turn-taking and adaptive speech
+- WebSocket API for real-time conversations
+- Hybrid mode (traditional skill + Nova Sonic)
+
+**Emergency Assist Features:**
+- Level 2 emergency protocol with location sharing
+- 30-minute emergency session persistence
+- Dual notification system (SNS + SMS)
+- Real-time caregiver updates
+
+See [Nova Sonic README](src/nova-sonic-websocket/README.md) and [Emergency Documentation](docs/EMERGENCY.md) for details.
 
 ## 📁 Project Structure
 
@@ -252,9 +274,10 @@ aws cloudwatch get-metric-statistics \
   - SNS SMS alerts
   - Intent handlers for routines, medications, family
   
-- **Phase 3** (Feb 20-26): Refinement 🔄
-  - Nova Sonic speech-to-speech upgrade
-  - Alexa Emergency Assist integration
+- **Phase 3** (Feb 20-26): Refinement ✅
+  - Nova Sonic speech-to-speech integration with WebSocket API
+  - Enhanced Emergency Assist with location sharing and 30-min session
+  - CloudWatch monitoring dashboard and alarms
   - Conversation logging and analytics
   
 - **Phase 4** (Feb 27-Mar 5): Caregiver Dashboard

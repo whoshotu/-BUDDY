@@ -1,0 +1,279 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Buddy - CloudWatch Monitoring Dashboard and Alarms"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    Description: Deployment environment
+  
+  LambdaFunctionName:
+    Type: String
+    Default: buddy-alexa-skill-dev
+    Description: Name of the main Lambda function
+  
+  WebSocketLambdaName:
+    Type: String
+    Default: buddy-nova-sonic-websocket-dev
+    Description: Name of the WebSocket Lambda function
+  
+  SNSTopicArn:
+    Type: String
+    Description: SNS Topic ARN for alarm notifications
+
+Resources:
+  # Lambda Error Rate Alarm
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "buddy-lambda-errors-${Environment}"
+      AlarmDescription: "Alarm when Lambda error rate > 1%"
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref LambdaFunctionName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      OKActions:
+        - !Ref SNSTopicArn
+
+  # Lambda Duration Alarm
+  LambdaDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "buddy-lambda-duration-${Environment}"
+      AlarmDescription: "Alarm when Lambda duration > 10 seconds"
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 10000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref LambdaFunctionName
+      AlarmActions:
+        - !Ref SNSTopicArn
+
+  # DynamoDB Throttling Alarm
+  DynamoDBThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "buddy-dynamodb-throttling-${Environment}"
+      AlarmDescription: "Alarm when DynamoDB requests are throttled"
+      MetricName: ThrottledRequests
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopicArn
+
+  # Emergency Escalation Rate Alarm
+  EmergencyEscalationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "buddy-emergency-escalation-${Environment}"
+      AlarmDescription: "Alarm when Level 2 emergencies > 1 per day"
+      MetricName: EmergencyEscalations
+      Namespace: Buddy/Safety
+      Statistic: Sum
+      Period: 86400
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref SNSTopicArn
+
+  # Custom Metrics Filter - Emergency Escalations
+  EmergencyEscalationMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LambdaFunctionName}"
+      FilterPattern: "EMERGENCY ESCALATION - Level 2 triggered"
+      MetricTransformations:
+        - MetricNamespace: Buddy/Safety
+          MetricName: EmergencyEscalations
+          MetricValue: "1"
+          DefaultValue: 0
+
+  # Custom Metrics Filter - Safety Alerts
+  SafetyAlertMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LambdaFunctionName}"
+      FilterPattern: "Alert sent (Level"
+      MetricTransformations:
+        - MetricNamespace: Buddy/Safety
+          MetricName: SafetyAlerts
+          MetricValue: "1"
+          DefaultValue: 0
+
+  # Custom Metrics Filter - Conversation Count
+  ConversationMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LambdaFunctionName}"
+      FilterPattern: "Intent:"
+      MetricTransformations:
+        - MetricNamespace: Buddy/Usage
+          MetricName: Conversations
+          MetricValue: "1"
+          DefaultValue: 0
+
+  # CloudWatch Dashboard
+  BuddyDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "Buddy-Monitoring-${Environment}"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", "FunctionName", "${LambdaFunctionName}", {"stat": "Sum"}],
+                  [".", "Errors", ".", ".", {"stat": "Sum", "color": "#d62728"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "title": "Lambda Invocations & Errors",
+                "yAxis": {
+                  "left": {"min": 0}
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/Lambda", "Duration", "FunctionName", "${LambdaFunctionName}", {"stat": "Average"}],
+                  ["...", {"stat": "p99", "color": "#d62728"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "title": "Lambda Duration (ms)",
+                "yAxis": {
+                  "left": {"min": 0}
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["Buddy/Safety", "SafetyAlerts", {"stat": "Sum"}],
+                  [".", "EmergencyEscalations", {"stat": "Sum", "color": "#d62728"}]
+                ],
+                "period": 3600,
+                "region": "${AWS::Region}",
+                "title": "Safety Alerts & Emergency Escalations",
+                "yAxis": {
+                  "left": {"min": 0}
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 6,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["Buddy/Usage", "Conversations", {"stat": "Sum"}]
+                ],
+                "period": 3600,
+                "region": "${AWS::Region}",
+                "title": "Conversations per Hour",
+                "yAxis": {
+                  "left": {"min": 0}
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 6,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "BuddyPatients-${Environment}", {"stat": "Sum"}],
+                  ["...", "ConsumedWriteCapacityUnits", ".", ".", {"stat": "Sum"}],
+                  [".", "ConsumedReadCapacityUnits", "TableName", "BuddyConversationLogs-${Environment}", {"stat": "Sum"}],
+                  ["...", "ConsumedWriteCapacityUnits", ".", ".", {"stat": "Sum"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "title": "DynamoDB Capacity Usage",
+                "yAxis": {
+                  "left": {"min": 0}
+                }
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 12,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '/aws/lambda/${LambdaFunctionName}' | fields @timestamp, @message\n| filter @message like /EMERGENCY/ or @message like /Alert sent/\n| sort @timestamp desc\n| limit 20",
+                "region": "${AWS::Region}",
+                "title": "Recent Emergency Alerts",
+                "stacked": false
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 18,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '/aws/lambda/${LambdaFunctionName}' | fields @timestamp, @message\n| filter @message like /Error/ or @message like /Exception/\n| sort @timestamp desc\n| limit 20",
+                "region": "${AWS::Region}",
+                "title": "Recent Errors",
+                "stacked": false
+              }
+            }
+          ]
+        }
+
+Outputs:
+  DashboardName:
+    Description: CloudWatch Dashboard Name
+    Value: !Sub "Buddy-Monitoring-${Environment}"
+    Export:
+      Name: !Sub "${AWS::StackName}-Dashboard"
+
+  DashboardURL:
+    Description: CloudWatch Dashboard URL
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=Buddy-Monitoring-${Environment}"
