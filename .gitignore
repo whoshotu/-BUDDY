@@ -1,7 +1,7 @@
 # Dependencies
 node_modules/
 */node_modules/
-package-lock.json
+# package-lock.json removed from ignore to allow CI consistency
 yarn.lock
 
 # Deployment packages
