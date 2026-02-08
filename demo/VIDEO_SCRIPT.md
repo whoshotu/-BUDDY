@@ -15,10 +15,10 @@
 
 **Visual:**
 - Text overlay: "6.7 Million Americans live with Alzheimer's"
-- Fade to: "70% experience anxiety and confusion daily"
+- Fade to: 70% experience anxiety and confusion daily"
 - Show: Caregiver looking exhausted/stressed
 - Show: Patient looking confused/scared
-
+"
 **Audio (Narration):**
 > "Every day, 6.7 million Americans with dementia face anxiety, confusion, and emergencies. Their caregivers experience burnout from constant monitoring. Existing solutions lack natural voice interaction and emergency response."
 
