@@ -210,7 +210,7 @@ async function classifySafetyLevel(utterance, patientContext, repeatCount) {
 /**
  * Send SMS alert to caregiver
  */
-async function sendCaregiverAlert({ caregiverPhone, patientName, utterance, escalationLevel, conversationLink }) {
+async function sendCaregiverAlert({ caregiverPhone, patientName, utterance, escalationLevel, conversationLink, deviceAddress, patientContext }) {
   if (!CONFIG.SNS_TOPIC && !caregiverPhone) {
     console.warn('No SNS topic or phone number configured for alerts');
     return;
@@ -218,20 +218,75 @@ async function sendCaregiverAlert({ caregiverPhone, patientName, utterance, esca
 
   try {
     let message;
+    let subject;
     
     if (escalationLevel === 2) {
-      message = `URGENT: ${patientName} said "${utterance}". Initiating emergency protocol. ${conversationLink || ''}`;
+      // URGENT Level 2 Emergency Alert
+      subject = '🚨 URGENT: Buddy Emergency Alert';
+      message = [
+        `EMERGENCY: ${patientName} triggered a Level 2 alert.`,
+        ``,
+        `Statement: "${utterance}"`,
+        `Time: ${new Date().toLocaleString()}`,
+        deviceAddress ? `Location: ${deviceAddress}` : '',
+        ``,
+        `Patient Info:`,
+        `- Medical Conditions: ${patientContext?.patient?.safetyProfile?.medicalConditions?.join(', ') || 'None listed'}`,
+        `- Allergies: ${patientContext?.patient?.safetyProfile?.allergies?.join(', ') || 'None listed'}`,
+        `- Emergency Contacts: ${patientContext?.patient?.safetyProfile?.emergencyContacts?.join(', ') || 'None listed'}`,
+        ``,
+        `ACTION REQUIRED:`,
+        `1. Call ${patientName} immediately`,
+        `2. If no response, call 911`,
+        `3. Check camera/doorbell if available`,
+        conversationLink ? `4. View conversation: ${conversationLink}` : '',
+        ``,
+        `Reply 1 if you're responding`,
+        `Reply 2 if you've called 911`
+      ].filter(Boolean).join('\n');
+      
     } else {
-      message = `Buddy Alert: ${patientName} said "${utterance}" ${CONFIG.REPETITION_THRESHOLD + 1}+ times. ${conversationLink || ''}`;
+      // Level 1 Concerning Alert
+      subject = 'Buddy Alert - Concerning Behavior';
+      message = [
+        `Buddy Alert: ${patientName}`,
+        ``,
+        `Statement: "${utterance}"`,
+        `Frequency: ${CONFIG.REPETITION_THRESHOLD + 1}+ times in 2 hours`,
+        `Time: ${new Date().toLocaleString()}`,
+        ``,
+        `This may indicate:`,
+        `- Confusion or disorientation`,
+        `- Anxiety or distress`,
+        `- Change in condition`,
+        ``,
+        `Suggested Actions:`,
+        `- Check in with ${patientName} soon`,
+        `- Review their daily routine`,
+        `- Consider a wellness visit`,
+        conversationLink ? `- View details: ${conversationLink}` : ''
+      ].filter(Boolean).join('\n');
     }
 
+    // Send to SNS Topic
     await snsClient.send(new PublishCommand({
       TopicArn: CONFIG.SNS_TOPIC,
       Message: message,
-      Subject: escalationLevel === 2 ? 'URGENT: Buddy Emergency Alert' : 'Buddy Alert'
+      Subject: subject
     }));
 
-    console.log(`Alert sent (Level ${escalationLevel}): ${message}`);
+    // Also send direct SMS if phone number available
+    if (caregiverPhone) {
+      await snsClient.send(new PublishCommand({
+        PhoneNumber: caregiverPhone,
+        Message: escalationLevel === 2 
+          ? `🚨 URGENT: ${patientName} said "${utterance}". Check Buddy app immediately.`
+          : `Buddy Alert: ${patientName} said "${utterance}" repeatedly. Please check in.`,
+        Subject: subject
+      }));
+    }
+
+    console.log(`🚨 Alert sent (Level ${escalationLevel}) to ${caregiverPhone || 'SNS Topic'}`);
 
   } catch (error) {
     console.error('Error sending alert:', error);
@@ -373,6 +428,46 @@ function getSlotValue(handlerInput, slotName) {
   return intent.slots?.[slotName]?.value;
 }
 
+/**
+ * Get device address/location from Alexa
+ * Note: Requires address permission in skill manifest
+ */
+async function getDeviceAddress(handlerInput) {
+  try {
+    const { deviceId } = handlerInput.requestEnvelope.context.System.device;
+    const { apiEndpoint, apiAccessToken } = handlerInput.requestEnvelope.context.System;
+    
+    // Try to get full address
+    const response = await fetch(`${apiEndpoint}/v1/devices/${deviceId}/settings/address`, {
+      headers: {
+        'Authorization': `Bearer ${apiAccessToken}`
+      }
+    });
+    
+    if (response.ok) {
+      const address = await response.json();
+      return `${address.addressLine1}, ${address.city}, ${address.stateOrRegion} ${address.postalCode}`;
+    }
+    
+    // Fallback to country/postal code only
+    const countryResponse = await fetch(`${apiEndpoint}/v1/devices/${deviceId}/settings/address/countryAndPostalCode`, {
+      headers: {
+        'Authorization': `Bearer ${apiAccessToken}`
+      }
+    });
+    
+    if (countryResponse.ok) {
+      const data = await countryResponse.json();
+      return `${data.postalCode}, ${data.countryCode}`;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting device address:', error);
+    return null;
+  }
+}
+
 // ============== ALEXA HANDLERS ==============
 
 /**
@@ -467,17 +562,42 @@ const IntentRequestHandler = {
 
       // Handle escalations
       if (escalationLevel === 2) {
-        // Emergency: Send alert immediately
+        // EMERGENCY PROTOCOL - Level 2
+        // No permission required - immediate action
+        
+        console.log('🚨 EMERGENCY ESCALATION - Level 2 triggered');
+        
+        // Get device location if available
+        const deviceAddress = await getDeviceAddress(handlerInput);
+        
+        // Send URGENT SMS to caregiver with location
         await sendCaregiverAlert({
           caregiverPhone: patientContext.patient.safetyProfile?.caregiverPhone,
           patientName: patientContext.patient.preferredName,
           utterance,
-          escalationLevel: 2
+          escalationLevel: 2,
+          deviceAddress,
+          patientContext
+        });
+        
+        // Store emergency context in session for follow-up
+        handlerInput.attributesManager.setSessionAttributes({
+          emergencyMode: true,
+          emergencyStartTime: Date.now(),
+          lastUtterance: utterance,
+          patientName: patientContext.patient.preferredName
         });
 
+        // Emergency response with immediate action announcement
+        const emergencyResponse = 
+          "I'm contacting emergency services and your caregiver now. " +
+          "Stay on the line with me. " +
+          response;
+
         return handlerInput.responseBuilder
-          .speak("I'm contacting your caregiver now. Stay with me. " + response)
-          .reprompt("Help is on the way. Can you tell me where you are?")
+          .speak(emergencyResponse)
+          .reprompt("Help is coming. Can you tell me exactly where you are? Are you hurt?")
+          .withShouldEndSession(false)
           .getResponse();
 
       } else if (escalationLevel === 1) {
@@ -547,6 +667,68 @@ const CancelAndStopIntentHandler = {
 };
 
 /**
+ * Emergency Intent Handler
+ * Handles follow-up interactions during emergency mode
+ */
+const EmergencyIntentHandler = {
+  canHandle(handlerInput) {
+    const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
+    return sessionAttributes.emergencyMode === true;
+  },
+  async handle(handlerInput) {
+    const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
+    const { emergencyStartTime, patientName } = sessionAttributes;
+    
+    // Check if emergency is still active (within 30 minutes)
+    const emergencyDuration = Date.now() - emergencyStartTime;
+    const isEmergencyActive = emergencyDuration < (30 * 60 * 1000); // 30 minutes
+    
+    if (!isEmergencyActive) {
+      // Clear emergency mode after 30 minutes
+      handlerInput.attributesManager.setSessionAttributes({});
+      return handlerInput.responseBuilder
+        .speak("The emergency period has ended. How can I help you now?")
+        .getResponse();
+    }
+    
+    const utterance = handlerInput.requestEnvelope.request.intent?.slots?.query?.value || 
+                     "unknown";
+    
+    console.log('🚨 Emergency mode - patient said:', utterance);
+    
+    // Keep patient engaged and gather information
+    let response;
+    const lowerUtterance = utterance.toLowerCase();
+    
+    if (lowerUtterance.includes('pain') || lowerUtterance.includes('hurt')) {
+      response = "I understand you're in pain. Help is coming. Can you tell me where it hurts?";
+    } else if (lowerUtterance.includes('fall') || lowerUtterance.includes('fell')) {
+      response = "I heard you fell. Try not to move if you're hurt. Help is on the way. Can you tell me if you can move?";
+    } else if (lowerUtterance.includes('scared') || lowerUtterance.includes('afraid')) {
+      response = "You're safe. I'm here with you. Your caregiver has been notified and help is coming.";
+    } else if (lowerUtterance.includes('where') || lowerUtterance.includes('location')) {
+      response = "You're at home. Your caregiver knows your address and is coming to help you.";
+    } else {
+      response = "I'm here with you. Help is coming. Can you tell me more about what's happening?";
+    }
+    
+    // Send update to caregiver with patient's response
+    await sendCaregiverAlert({
+      caregiverPhone: null, // Uses SNS topic
+      patientName,
+      utterance: `[Emergency Update] Patient said: "${utterance}"`,
+      escalationLevel: 2
+    });
+    
+    return handlerInput.responseBuilder
+      .speak(response)
+      .reprompt("Stay calm. I'm staying with you. Can you tell me more?")
+      .withShouldEndSession(false)
+      .getResponse();
+  }
+};
+
+/**
  * Error Handler
  */
 const ErrorHandler = {
@@ -568,6 +750,7 @@ const ErrorHandler = {
 exports.handler = Alexa.SkillBuilders.custom()
   .addRequestHandlers(
     LaunchRequestHandler,
+    EmergencyIntentHandler,  // Must be before IntentRequestHandler
     IntentRequestHandler,
     HelpIntentHandler,
     CancelAndStopIntentHandler
