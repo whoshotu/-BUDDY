@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd src/alexa-skill
-          npm install
+          npm ci
       - name: Run Build
         run: |
           cd src/alexa-skill
@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd src/caregiver-dashboard
-          npm install
+          npm ci
       - name: Lint
         run: |
           cd src/caregiver-dashboard
