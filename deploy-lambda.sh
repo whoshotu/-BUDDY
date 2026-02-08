@@ -76,6 +76,12 @@ if aws lambda get-function --function-name "${FUNCTION_FULL_NAME}" --region "${R
         --zip-file fileb://lambda.zip \
         --region "${REGION}"
     
+    # Update tracing configuration
+    aws lambda update-function-configuration \
+        --function-name "${FUNCTION_FULL_NAME}" \
+        --tracing-config Mode=Active \
+        --region "${REGION}"
+    
     echo "${GREEN}✅ Function code updated${NC}"
 else
     echo "   Creating new function..."
@@ -88,8 +94,9 @@ else
         --handler index.handler \
         --zip-file fileb://lambda.zip \
         --region "${REGION}" \
-        --timeout 30 \
+        --timeout 8 \  # 8 seconds: Alexa service timeout limit (per Well-Architected guidance)
         --memory-size 512 \
+        --tracing-config Mode=Active \
         --environment Variables="{
             CAREGIVERS_TABLE=${CAREGIVERS_TABLE},
             PATIENTS_TABLE=${PATIENTS_TABLE},

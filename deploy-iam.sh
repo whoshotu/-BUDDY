@@ -162,6 +162,14 @@ cat > /tmp/buddy-policy.json << EOF
         "sns:Publish"
       ],
       "Resource": "arn:aws:sns:${REGION}:${ACCOUNT_ID}:buddy-alerts-${ENVIRONMENT}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "xray:PutTraceSegments",
+        "xray:PutTelemetryRecords"
+      ],
+      "Resource": "*"
     }
   ]
 }

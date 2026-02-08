@@ -11,16 +11,21 @@
  */
 
 const Alexa = require('ask-sdk-core');
+const AWSXRay = require('aws-xray-sdk-core');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, QueryCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
 const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
 
-// AWS Clients
-const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
+// Enable X-Ray tracing
+AWSXRay.captureHTTPsGlobal(require('https'));
+AWSXRay.capturePromise();
+
+// AWS Clients with X-Ray tracing
+const ddbClient = AWSXRay.captureAWSv3Client(new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' }));
 const docClient = DynamoDBDocumentClient.from(ddbClient);
-const bedrockClient = new BedrockRuntimeClient({ region: process.env.AWS_REGION || 'us-east-1' });
-const snsClient = new SNSClient({ region: process.env.AWS_REGION || 'us-east-1' });
+const bedrockClient = AWSXRay.captureAWSv3Client(new BedrockRuntimeClient({ region: process.env.AWS_REGION || 'us-east-1' }));
+const snsClient = AWSXRay.captureAWSv3Client(new SNSClient({ region: process.env.AWS_REGION || 'us-east-1' }));
 
 // Configuration
 const TABLES = {
@@ -44,7 +49,13 @@ const CONFIG = {
  * Looks up Alexa userId → patientId mapping, then fetches patient data
  */
 async function getPatientContext(alexaUserId) {
+  // Create X-Ray subsegment for patient context lookup
+  const segment = AWSXRay.getSegment();
+  const subsegment = segment.addNewSubsegment('getPatientContext');
+  
   try {
+    subsegment.addAnnotation('alexaUserId', alexaUserId);
+    
     // Step 1: Find caregiver with this Alexa user mapping
     const caregiverResult = await docClient.send(new QueryCommand({
       TableName: TABLES.CAREGIVERS,
@@ -68,9 +79,11 @@ async function getPatientContext(alexaUserId) {
     }
 
     // Step 2: Get patient data
+    // Optimization: Use projection to fetch only needed fields
     const patientResult = await docClient.send(new GetCommand({
       TableName: TABLES.PATIENTS,
-      Key: { patientId }
+      Key: { patientId },
+      ProjectionExpression: 'patientId, preferredName, dementiaStage, people, routines, medications, safetyProfile'
     }));
 
     if (!patientResult.Item) {
@@ -91,6 +104,7 @@ async function getPatientContext(alexaUserId) {
     };
 
   } catch (error) {
+    subsegment.addError(error);
     console.error('Error getting patient context:', error);
     // Fallback to demo patient for testing
     return {
@@ -107,6 +121,8 @@ async function getPatientContext(alexaUserId) {
       patientId: 'pt-001',
       caregiverId: 'cg-001'
     };
+  } finally {
+    subsegment.close();
   }
 }
 
@@ -297,7 +313,15 @@ async function sendCaregiverAlert({ caregiverPhone, patientName, utterance, esca
  * Generate response using Amazon Nova
  */
 async function generateNovaResponse({ intent, slots, facts, patientContext, escalationLevel }) {
+  // Create X-Ray subsegment for Nova API call
+  const segment = AWSXRay.getSegment();
+  const subsegment = segment.addNewSubsegment('generateNovaResponse');
+  
   try {
+    subsegment.addAnnotation('intent', intent);
+    subsegment.addAnnotation('patientName', patientContext.patient.preferredName);
+    subsegment.addAnnotation('escalationLevel', escalationLevel);
+    
     const systemPrompt = [
       "You are a calm, dementia-friendly voice assistant named Buddy.",
       "Use short sentences (10-15 words max). Be reassuring and patient.",
@@ -350,6 +374,8 @@ async function generateNovaResponse({ intent, slots, facts, patientContext, esca
     }
 
     return "I'm here with you. Can you tell me more?";
+  } finally {
+    subsegment.close();
   }
 }
 
