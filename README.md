@@ -61,19 +61,21 @@ This creates:
 ### Phase 2: Deploy Alexa Skill
 
 #### 1. Configure Environment
-
-```bash
 # Copy environment template
-cp .env.example .env
+```bash
 
-# Edit .env with your AWS values
+cp .env.example .env
+``` 
+# Edit .env with your AWS values 
+```bash
+
 nano .env
 ```
 
 #### 2. Deploy Lambda Function
+ Deploy the Alexa skill Lambda
+```bash  
 
-```bash
-# Deploy the Alexa skill Lambda
 ./deploy-lambda.sh --environment dev --region us-east-1
 ```
 
@@ -129,12 +131,14 @@ This creates:
 ```
 
 ### Phase 3: Refinement & Monitoring (Optional)
+ Deploy Nova Sonic WebSocket API for advanced speech-to-speech
+```bash
+
+./scripts/deploy-websocket.sh --environment dev --region us-east-1
+```
+# Deploy CloudWatch monitoring dashboard
 
 ```bash
-# Deploy Nova Sonic WebSocket API for advanced speech-to-speech
-./scripts/deploy-websocket.sh --environment dev --region us-east-1
-
-# Deploy CloudWatch monitoring dashboard
 ./scripts/deploy-monitoring.sh --environment dev --region us-east-1
 ```
 
@@ -156,13 +160,18 @@ See [Nova Sonic README](src/nova-sonic-websocket/README.md) and [Emergency Docum
 
 ### Phase 4: Caregiver Dashboard
 
+Start the React dashboard
+
 ```bash
-# Start the React dashboard
 cd src/caregiver-dashboard
 npm install
 npm run dev
+```
 
-# Open http://localhost:3000
+# Open 
+
+```bash
+http://localhost:3000
 ```
 
 **Dashboard Features:**
@@ -174,13 +183,13 @@ npm run dev
 
 ### Phase 5: Testing Without Alexa Device
 
-```bash
 # Test Lambda function directly
+
+```bash
 cd test
 ./test-lambda.sh
-
-# This simulates Alexa requests and tests emergency flow
 ```
+# This simulates Alexa requests and tests emergency flow
 
 See [Testing Guide](docs/BETA_TESTING.md) for comprehensive test scenarios.
 
@@ -264,14 +273,18 @@ LOGS_TABLE=BuddyConversationLogs-dev
 
 ### Local Testing
 
-```bash
-# Navigate to skill directory
-cd src/alexa-skill
 
+# Navigate to skill directory
+```bash
+cd src/alexa-skill
+```
 # Install dependencies
+```bash
 npm install
+```
 
 # Create test event
+```bash
 cat > test-event.json << 'EOF'
 {
   "version": "1.0",
@@ -293,8 +306,10 @@ cat > test-event.json << 'EOF'
   }
 }
 EOF
+```
 
 # Run test
+```bash
 node -e "
 const handler = require('./index.js').handler;
 const event = require('./test-event.json');
@@ -306,11 +321,12 @@ handler(event, {}, (err, result) => {
 
 ### CloudWatch Monitoring
 
-```bash
 # View Lambda logs
+```bash
 aws logs tail /aws/lambda/buddy-alexa-skill-dev --follow
-
+```
 # Check invocation metrics
+```bash
 aws cloudwatch get-metric-statistics \
   --namespace AWS/Lambda \
   --metric-name Invocations \
