@@ -125,14 +125,14 @@ This creates:
 "I fell down" (immediate Level 2 alert)
 ```
 
-### Phase 3: Nova Sonic & Emergency Assist (Optional)
+### Phase 3: Refinement & Monitoring (Optional)
 
 ```bash
 # Deploy Nova Sonic WebSocket API for advanced speech-to-speech
-./deploy-websocket.sh --environment dev --region us-east-1
+./scripts/deploy-websocket.sh --environment dev --region us-east-1
 
 # Deploy CloudWatch monitoring dashboard
-./deploy-monitoring.sh --environment dev --region us-east-1
+./scripts/deploy-monitoring.sh --environment dev --region us-east-1
 ```
 
 **Nova Sonic Features:**
@@ -149,27 +149,90 @@ This creates:
 
 See [Nova Sonic README](src/nova-sonic-websocket/README.md) and [Emergency Documentation](docs/EMERGENCY.md) for details.
 
+### Phase 4: Caregiver Dashboard
+
+```bash
+# Start the React dashboard
+cd src/caregiver-dashboard
+npm install
+npm run dev
+
+# Open http://localhost:3000
+```
+
+**Dashboard Features:**
+- Patient profile overview
+- Real-time conversation monitoring
+- Safety alert management
+- Emergency contact information
+
+### Phase 5: Testing Without Alexa Device
+
+```bash
+# Test Lambda function directly
+cd test
+./test-lambda.sh
+
+# This simulates Alexa requests and tests emergency flow
+```
+
+See [Testing Guide](docs/BETA_TESTING.md) for comprehensive test scenarios.
+
 ## 📁 Project Structure
 
 ```
 buddy/
-├── infrastructure/       # CloudFormation templates and seed data
-│   ├── dynamodb.yaml    # DynamoDB table definitions
-│   └── seed_data.py     # Test data initialization
+├── docs/                          # Documentation
+│   ├── README.md                 # Documentation index
+│   ├── EXECUTIVE_SUMMARY.md      # Project overview
+│   ├── ARCHITECTURE.md           # System design
+│   ├── API.md                    # API reference
+│   ├── DEMO_SCRIPT.md           # Demo guide
+│   ├── PRD.md                    # Product requirements
+│   ├── SETUP.md                  # Installation guide
+│   ├── DEPLOYMENT.md            # Deployment strategies
+│   ├── EMERGENCY.md             # Emergency features
+│   ├── BETA_TESTING.md          # Testing procedures
+│   └── DYNAMODB_OPTIMIZATION.md # Performance guide
+│
+├── infrastructure/               # CloudFormation templates
+│   ├── dynamodb.yaml            # DynamoDB tables
+│   ├── websocket-api.yaml       # WebSocket API
+│   ├── monitoring.yaml          # CloudWatch dashboards
+│   └── seed_data.py             # Test data
+│
 ├── src/
-│   ├── alexa-skill/     # Lambda function for Alexa
-│   │   ├── index.js     # Main handler
-│   │   ├── skill.json   # Skill manifest
-│   │   ├── models/      # Interaction models
-│   │   └── package.json # Node.js dependencies
-│   └── caregiver-api/   # FastAPI backend (Phase 4)
-├── docs/                # Documentation
-│   ├── PRD.md          # Product Requirements Document
-│   └── SCHEMA.md       # Database schema documentation
-├── deploy.sh           # Infrastructure deployment
-├── deploy-lambda.sh    # Lambda deployment
-├── deploy-iam.sh       # IAM role setup
-└── verify.sh           # Verification script
+│   ├── alexa-skill/             # Lambda function
+│   │   ├── index.js
+│   │   ├── skill.json
+│   │   ├── models/
+│   │   ├── package.json
+│   │   └── tests/               # Unit tests
+│   │
+│   ├── caregiver-dashboard/     # React web interface
+│   │   ├── src/
+│   │   ├── package.json
+│   │   └── README.md
+│   │
+│   └── nova-sonic-websocket/    # Advanced speech-to-speech
+│       ├── index.js
+│       ├── test-client.html
+│       └── README.md
+│
+├── scripts/                      # Deployment scripts
+│   ├── deploy.sh
+│   ├── deploy-iam.sh
+│   ├── deploy-lambda.sh
+│   ├── deploy-websocket.sh
+│   ├── deploy-monitoring.sh
+│   └── verify.sh
+│
+├── test/                         # Test suite
+│   ├── test-lambda.sh
+│   └── test-lambda.js
+│
+├── demo/                         # Demo materials
+└── README.md                     # Main project README
 ```
 
 ## 🔧 Environment Configuration
@@ -280,15 +343,17 @@ aws cloudwatch get-metric-statistics \
   - CloudWatch monitoring dashboard and alarms
   - Conversation logging and analytics
   
-- **Phase 4** (Feb 27-Mar 5): Caregiver Dashboard
-  - FastAPI backend
+- **Phase 4** (Feb 27-Mar 5): Caregiver Dashboard 🔄
+  - React dashboard with patient monitoring
   - Web UI implementation
+  - API documentation
   - Edge case handling
   
-- **Phase 5** (Mar 6-16): Demo & Submission
+- **Phase 5** (Mar 6-16): Demo & Submission ⏳
   - Demo video production
   - Devpost submission
   - Documentation polish
+  - Test credentials for judges
 
 ## 📚 Documentation
 
@@ -309,4 +374,4 @@ MIT License - Amazon Nova AI Hackathon 2026
 
 ---
 
-**Status**: Phase 2 Complete - Ready for Phase 3 (Refinement)
+**Status**: Phase 4 In Progress - Caregiver Dashboard & Documentation
