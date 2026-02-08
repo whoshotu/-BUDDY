@@ -15,6 +15,9 @@ lambda.zip
 
 # AWS
 .aws/
+*rootkey*.csv
+*credentials*.csv
+*accessKeys*.csv
 
 # Python
 __pycache__/
